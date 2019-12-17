@@ -1,0 +1,211 @@
+pipeline{
+	agent{
+		label "slave1"
+	}
+	stages{
+		stage("Builld"){
+			steps{
+				echo "hello world"
+			}
+		}
+	}
+}
+
+-----------------------------------
+
+pipeline{
+	agent {
+		node{
+			label ""
+			customworkspace ""
+		}
+	}
+	stages{
+		stage("Builld"){
+			steps{
+				echo "hello world"
+
+			}
+		}
+	}
+}
+---------------------------------------
+pipeline{
+	agent {
+		node{
+			label ""
+			customworkspace ""
+		}
+	}
+	stages{
+		stage("Builld"){
+			steps{
+				script{
+					def name = "jeff"
+					if (name == "jeff")
+						println("hi $(name)")
+					else
+						println("hi human")
+					sleep 2
+					echo "this is pipeline script for running groovy script inside pipeline"				
+				}
+
+			}
+		}
+	}
+}
+-------------------------------------------
+pipeline with retry and sleep error code
+
+pipeline{
+	agent {
+		node{
+			label ""
+			customworkspace ""
+		}
+	}
+	stages{
+		stage("Builld"){
+			steps{
+				script{
+					def name = "jeff"
+					if (name == "jeff")
+						println("hi $(name)")
+					else
+						println("hi human")
+					sleep 2
+					echo "this is pipeline script for running groovy script inside pipeline"
+			retry(3){
+					echo "retrying the steps"
+					error "wantedly failing the build step"
+				}			
+			echo "after retry"
+			timeout(time: 1, unit: "seconds")
+			{
+				echo "sleeping in timeout"
+				sleep 3
+				}
+			}
+		}
+	}
+}
+-----------------------------------------
+timeout and retry example:
+The "Deploy" stage retries the flakey-deploy.sh script 3 times, and then waits for up to 3 minutes for the health-check.sh script to execute. If the health check script does not complete in 3 minutes, the Pipeline will be marked as having failed in the "Deploy" stage.
+
+pipeline {
+    agent any
+    stages {
+        stage('Deploy') {
+            steps {
+                retry(3) {
+                    sh './flakey-deploy.sh'
+                }
+
+                timeout(time: 3, unit: 'MINUTES') {
+                    sh './health-check.sh'
+                }
+            }
+        }
+    }
+}
+----------------------------------------------------------------------
+We can compose these steps together. For example, if we wanted to retry our deployment 5 times, but never want to spend more than 3 minutes in total before failing the stage:
+pipeline {
+    agent any
+    stages {
+        stage('Deploy') {
+            steps {
+                timeout(time: 3, unit: 'MINUTES') {
+                    retry(5) {
+                        sh './flakey-deploy.sh'
+                    }
+                }
+            }
+        }
+    }
+}
+-------------------------------------------------------------------
+adding tools like maven and jdk in pipeline
+
+pipeline{
+	agent any
+	stages{
+		stage(Build){
+			tools{
+				maven "maven3_5_2"
+			}
+			steps{
+				sh "mvn --version"
+			}
+		}
+	}
+}
+-------------------------------------------------------------
+retry with error options
+
+pipeline{
+	agent any
+	stages{
+		stage(Build){
+			options{
+				retry(3)
+			}
+			steps{
+				echo "before failing"
+				error "fail the buld stage"
+				echo "after failing"
+			}
+		}
+	}
+}
+---------------------------
+If you donn want the script to retry the build stage again once the build stage fails set the currentBuild.result = 'Failure' run the script
+
+pipeline{
+	agent any
+	stages{
+		stage(Build){
+			options{
+				retry(3)
+			}
+			steps{
+				echo "before failing"
+				error "fail the buld stage"
+				echo "after failing"
+				script{
+					currentBuild.result = 'Failure'
+				}
+			}
+		}
+	}
+}
+----------------------
+timestamps at stage level and at the pipeline level
+pipeline{
+	agent any
+	options{
+		timestamp()
+	}
+	stages{
+		stage(Build){
+			options{
+				retry(3)
+			}
+		options{
+			timestamp()
+		}
+			steps{
+				timestamps{
+					echo "before failing"
+					error "fail the buld stage"
+					echo "after failing"
+					script{
+						currentBuild.result = 'Failure'
+					}
+				}
+			}
+		}
+	}
+}
+-----------------------
